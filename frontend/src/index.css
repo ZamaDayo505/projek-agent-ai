@@ -1,0 +1,212 @@
+:root {
+  --bg-primary: #f8fafc;
+  --bg-secondary: #ffffff;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
+  --border-color: #e2e8f0;
+  --border-focus: #6366f1;
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --primary: #4f46e5;
+  --primary-glow: rgba(79, 70, 229, 0.15);
+  --accent-orange: #ea580c;
+  --accent-emerald: #059669;
+  --accent-rose: #e11d48;
+  --accent-sky: #0284c7;
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.07), 0 2px 4px -2px rgba(0, 0, 0, 0.05);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -4px rgba(0, 0, 0, 0.04);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-main);
+  font-family: var(--font-sans);
+  min-height: 100vh;
+  line-height: 1.5;
+  background-image: 
+    radial-gradient(at 0% 0%, rgba(79, 70, 229, 0.04) 0px, transparent 40%),
+    radial-gradient(at 100% 100%, rgba(234, 88, 12, 0.03) 0px, transparent 40%);
+  background-attachment: fixed;
+}
+
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Layout Utilities */
+.app-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 1.5rem;
+  width: 100%;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 0.875rem;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-sm);
+  transition: all 0.2s ease;
+}
+
+.card:hover {
+  border-color: #cbd5e1;
+  box-shadow: var(--shadow-md);
+}
+
+.card-interactive:hover {
+  border-color: #818cf8;
+  box-shadow: 0 8px 20px rgba(79, 70, 229, 0.08);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  font-weight: 500;
+  padding: 0.55rem 1.15rem;
+  border-radius: 0.55rem;
+  cursor: pointer;
+  transition: all 0.15s ease-in-out;
+  border: 1px solid transparent;
+  font-size: 0.875rem;
+}
+
+.btn-primary {
+  background: #4f46e5;
+  color: #ffffff;
+  box-shadow: 0 2px 4px rgba(79, 70, 229, 0.2);
+}
+
+.btn-primary:hover {
+  background: #4338ca;
+  box-shadow: 0 4px 10px rgba(79, 70, 229, 0.3);
+}
+
+.btn-outline {
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-outline:hover {
+  background: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.btn-danger {
+  background: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #e11d48;
+}
+
+.btn-danger:hover {
+  background: #ffe4e6;
+}
+
+/* Voice Mic Button */
+.btn-mic-recording {
+  background: #fee2e2 !important;
+  border-color: #ef4444 !important;
+  color: #b91c1c !important;
+  animation: pulseRecording 1.5s infinite ease-in-out;
+}
+
+@keyframes pulseRecording {
+  0% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.4); }
+  70% { box-shadow: 0 0 0 10px rgba(239, 68, 68, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0); }
+}
+
+/* Form Inputs */
+.input-field {
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 0.65rem 0.875rem;
+  border-radius: 0.55rem;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.input-field:focus {
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px var(--primary-glow);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.badge-streak {
+  background: #fff7ed;
+  color: #ea580c;
+  border: 1px solid #ffedd5;
+}
+
+.badge-success {
+  background: #ecfdf5;
+  color: #059669;
+  border: 1px solid #d1fae5;
+}
+
+.badge-expense {
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1px solid #ffe4e6;
+}
+
+.badge-income {
+  background: #f0f9ff;
+  color: #0284c7;
+  border: 1px solid #e0f2fe;
+}
+
+/* Animations */
+@keyframes pulseGlow {
+  0%, 100% { transform: scale(1); opacity: 0.9; }
+  50% { transform: scale(1.04); opacity: 1; }
+}
+
+.pulse-flame {
+  animation: pulseGlow 1.8s infinite ease-in-out;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #f1f5f9;
+}
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
