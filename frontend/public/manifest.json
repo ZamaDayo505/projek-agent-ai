@@ -1,0 +1,18 @@
+{
+  "name": "DevCompanion - Streak, Keuangan & Curhat",
+  "short_name": "DevCompanion",
+  "description": "AI Personal Companion untuk pelacakan GitHub Streak, Laporan Keuangan berbasis Suara, dan Ruang Curhat Empatis.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4f46e5",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
