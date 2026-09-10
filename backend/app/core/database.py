@@ -55,3 +55,15 @@ def initialize_database() -> None:
                 config_value TEXT NOT NULL
             )
         """)
+
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS homework_tasks (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                title TEXT NOT NULL,
+                subject TEXT NOT NULL,
+                deadline TEXT NOT NULL,
+                notes TEXT DEFAULT '',
+                is_completed INTEGER DEFAULT 0,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        """)

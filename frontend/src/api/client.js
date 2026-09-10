@@ -68,4 +68,18 @@ export const apiClient = {
       method: "POST",
       body: JSON.stringify(settingsPayload),
     }),
+
+  getHomework: () => requestApi("/homework"),
+
+  addHomework: (homeworkPayload) =>
+    requestApi("/homework", {
+      method: "POST",
+      body: JSON.stringify(homeworkPayload),
+    }),
+
+  toggleHomework: (taskId) =>
+    requestApi(`/homework/${taskId}/toggle`, { method: "PATCH" }),
+
+  deleteHomework: (taskId) =>
+    requestApi(`/homework/${taskId}`, { method: "DELETE" }),
 };

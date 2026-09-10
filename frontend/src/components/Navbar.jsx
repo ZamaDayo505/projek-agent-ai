@@ -1,11 +1,12 @@
 import React from "react";
-import { LayoutDashboard, Flame, Wallet, MessageSquareHeart, Settings } from "lucide-react";
+import { LayoutDashboard, Flame, Wallet, MessageSquareHeart, BookOpen, Settings } from "lucide-react";
 
 export function Navbar({ activeTab, setActiveTab, streakData, onOpenSettings }) {
   const navItems = [
     { id: "dashboard", label: "Dashboard", icon: LayoutDashboard },
     { id: "github", label: "GitHub Streak", icon: Flame },
     { id: "finance", label: "Keuangan", icon: Wallet },
+    { id: "homework", label: "Daftar PR", icon: BookOpen },
     { id: "curhat", label: "Ruang Curhat", icon: MessageSquareHeart },
   ];
 

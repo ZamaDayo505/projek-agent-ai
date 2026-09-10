@@ -4,6 +4,7 @@ import { SettingsModal } from "./components/SettingsModal";
 import { Dashboard } from "./pages/Dashboard";
 import { GitHubView } from "./pages/GitHubView";
 import { FinanceView } from "./pages/FinanceView";
+import { HomeworkView } from "./pages/HomeworkView";
 import { CurhatView } from "./pages/CurhatView";
 import { apiClient } from "./api/client";
 import { AlertCircle, ArrowRight } from "lucide-react";
@@ -13,6 +14,7 @@ export function App() {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [streakData, setStreakData] = useState(null);
   const [financeSummary, setFinanceSummary] = useState(null);
+  const [homeworkList, setHomeworkList] = useState([]);
   const [isRefreshingStreak, setIsRefreshingStreak] = useState(false);
   const [systemSettings, setSystemSettings] = useState({ has_openai_key: false, github_username: "" });
 
@@ -46,11 +48,21 @@ export function App() {
     }
   }, []);
 
+  const loadHomework = useCallback(async () => {
+    try {
+      const data = await apiClient.getHomework();
+      setHomeworkList(data);
+    } catch (err) {
+      console.error("Failed to fetch homework:", err);
+    }
+  }, []);
+
   useEffect(() => {
     loadSettings();
     loadStreak();
     loadFinance();
-  }, [loadSettings, loadStreak, loadFinance]);
+    loadHomework();
+  }, [loadSettings, loadStreak, loadFinance, loadHomework]);
 
   return (
     <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg-primary)" }}>
@@ -101,6 +113,7 @@ export function App() {
           <Dashboard
             streakData={streakData}
             financeSummary={financeSummary}
+            homeworkList={homeworkList}
             onNavigate={setActiveTab}
             onRefreshStreak={loadStreak}
             isRefreshingStreak={isRefreshingStreak}
@@ -121,6 +134,13 @@ export function App() {
             financeSummary={financeSummary}
             onRefreshFinance={loadFinance}
             onOpenSettings={() => setIsSettingsOpen(true)}
+          />
+        )}
+
+        {activeTab === "homework" && (
+          <HomeworkView
+            homeworkList={homeworkList}
+            onRefreshHomework={loadHomework}
           />
         )}
 
