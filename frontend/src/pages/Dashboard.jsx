@@ -13,7 +13,7 @@ import {
   BookOpen,
   CheckSquare
 } from "lucide-react";
-import { MikuHologram } from "../components/MikuHologram";
+import { Hololive3DHologram } from "../components/Hololive3DHologram";
 
 export function Dashboard({
   streakData,
@@ -78,8 +78,8 @@ export function Dashboard({
         </div>
       </div>
 
-      {/* Interactive Hatsune Miku Hologram System */}
-      <MikuHologram
+      {/* Interactive Hololive 3D Hologram Stage */}
+      <Hololive3DHologram
         streakData={streakData}
         homeworkList={homeworkList}
         onNavigate={onNavigate}
