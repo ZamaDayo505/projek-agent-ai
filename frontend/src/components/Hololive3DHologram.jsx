@@ -1,6 +1,6 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { VRMLoaderPlugin } from "@pixiv/three-vrm";
+import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
 import * as THREE from "three";
 import {
   Volume2, VolumeX, Music2, MessageCircle,
@@ -334,48 +334,55 @@ export function Hololive3DHologram({ streakData, homeworkList = [], onNavigate }
 
   // ── VRM Loader ─────────────────────────────────────────────────────────────
   const loadVRM = useCallback(async (key) => {
-    const vrmPath = CHARS[key].vrmFile;
+    let vrmPath = CHARS[key]?.vrmFile || "/models/asset.vrm";
 
-    // Check if file exists
     try {
       const probe = await fetch(vrmPath, { method: "HEAD" });
-      if (!probe.ok) { setVrmStatus("missing"); return; }
+      if (!probe.ok) {
+        vrmPath = "/models/asset.vrm";
+        const fallbackProbe = await fetch(vrmPath, { method: "HEAD" });
+        if (!fallbackProbe.ok) {
+          setVrmStatus("missing");
+          return;
+        }
+      }
     } catch {
-      setVrmStatus("missing"); return;
+      setVrmStatus("missing");
+      return;
     }
 
     setVrmStatus("loading");
     const r = threeRef.current;
 
-    // Setup Three.js if not yet
     const canvas = canvasRef.current;
     if (!canvas) return;
 
     if (!r.renderer) {
       r.scene = new THREE.Scene();
-      r.camera = new THREE.PerspectiveCamera(28, canvas.width / (canvas.height - 60), 0.1, 20);
-      r.camera.position.set(0, 1.4, 3.8);
-      r.camera.lookAt(0, 1.0, 0);
+      r.camera = new THREE.PerspectiveCamera(30, canvas.width / canvas.height, 0.1, 20);
+      r.camera.position.set(0, 1.3, 2.5);
+      r.camera.lookAt(0, 1.15, 0);
 
       r.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-      r.renderer.setSize(canvas.width, canvas.height - 60);
+      r.renderer.setSize(canvas.width, canvas.height);
       r.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
       r.renderer.outputColorSpace = THREE.SRGBColorSpace;
 
       // Lights
-      r.scene.add(new THREE.AmbientLight(0xffffff, 0.8));
-      const dir = new THREE.DirectionalLight(0xffffff, 1.8);
-      dir.position.set(1, 3, 2);
-      r.scene.add(dir);
-      const rim = new THREE.PointLight(0x7c3aed, 2.2, 8);
-      rim.position.set(-2, 1.5, -2);
-      r.scene.add(rim);
-      const fill = new THREE.PointLight(0x22d3ee, 1.5, 6);
-      fill.position.set(1, 0, 2);
-      r.scene.add(fill);
+      r.scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+      const dirLight = new THREE.DirectionalLight(0xffffff, 1.6);
+      dirLight.position.set(1, 3, 2);
+      r.scene.add(dirLight);
+
+      const rimLight = new THREE.PointLight(0x7c3aed, 2.2, 8);
+      rimLight.position.set(-2, 1.5, -2);
+      r.scene.add(rimLight);
+
+      const fillLight = new THREE.PointLight(0x22d3ee, 1.6, 6);
+      fillLight.position.set(1, 0, 2);
+      r.scene.add(fillLight);
     }
 
-    // Remove old VRM
     if (r.vrm) {
       r.scene.remove(r.vrm.scene);
       r.vrm = null;
@@ -389,27 +396,60 @@ export function Hololive3DHologram({ streakData, homeworkList = [], onNavigate }
         loader.load(vrmPath, resolve, undefined, reject)
       );
       const vrm = gltf.userData.vrm;
+      if (!vrm) throw new Error("No VRM data found");
+
+      VRMUtils.removeUnnecessaryVertices(gltf.scene);
+      VRMUtils.removeUnnecessaryJoints(gltf.scene);
+      VRMUtils.rotateVRM0(vrm);
+
       r.vrm = vrm;
       r.scene.add(vrm.scene);
       setVrmStatus("loaded");
 
-      // VRM animation loop
+      // Drag controls
+      let isDragging = false;
+      let lastX = 0;
+      let rotY = 0;
+
+      const onDown = (e) => {
+        isDragging = true;
+        lastX = e.clientX || (e.touches && e.touches[0]?.clientX) || 0;
+      };
+      const onMove = (e) => {
+        if (!isDragging) return;
+        const currentX = e.clientX || (e.touches && e.touches[0]?.clientX) || 0;
+        rotY += (currentX - lastX) * 0.012;
+        lastX = currentX;
+      };
+      const onUp = () => { isDragging = false; };
+
+      canvas.addEventListener("pointerdown", onDown);
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+
       cancelAnimationFrame(r.rafId);
       const clock = new THREE.Clock();
+
       const animateVRM = () => {
         r.rafId = requestAnimationFrame(animateVRM);
         const dt = clock.getDelta();
+        const t = clock.elapsedTime;
+
         if (r.vrm) {
           r.vrm.update(dt);
-          // Idle sway
-          const t = clock.elapsedTime;
-          vrm.scene.rotation.y = Math.sin(t * 0.6) * 0.08;
-          vrm.scene.position.y = Math.sin(t * 1.3) * 0.03;
+          r.vrm.scene.rotation.y += (rotY - r.vrm.scene.rotation.y) * 0.1;
+          r.vrm.scene.position.y = Math.sin(t * 1.5) * (dancingRef.current ? 0.08 : 0.02);
+
+          if (r.vrm.expressionManager) {
+            const blink = Math.sin(t * 1.8) > 0.95 ? 1 : 0;
+            r.vrm.expressionManager.setValue("blink", blink);
+          }
         }
         r.renderer.render(r.scene, r.camera);
       };
       animateVRM();
-    } catch {
+    } catch (err) {
+      console.warn("VRM load error:", err);
       setVrmStatus("missing");
     }
   }, []);
