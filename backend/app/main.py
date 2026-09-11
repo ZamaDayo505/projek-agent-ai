@@ -8,6 +8,7 @@ from app.api.finance import router as finance_router
 from app.api.chat import router as chat_router
 from app.api.settings import router as settings_router
 from app.api.homework import router as homework_router
+from app.api.voice import router as voice_router
 from app.services.github_service import fetch_github_user_streak
 
 scheduler = AsyncIOScheduler()
@@ -48,6 +49,7 @@ app.include_router(finance_router, prefix="/api")
 app.include_router(chat_router, prefix="/api")
 app.include_router(settings_router, prefix="/api")
 app.include_router(homework_router, prefix="/api")
+app.include_router(voice_router, prefix="/api")
 
 @app.get("/api/health")
 def check_health():

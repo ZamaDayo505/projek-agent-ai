@@ -65,7 +65,7 @@ export function App() {
   }, [loadSettings, loadStreak, loadFinance, loadHomework]);
 
   return (
-    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column", background: "var(--bg-primary)" }}>
+    <div style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
@@ -81,27 +81,27 @@ export function App() {
             style={{
               marginBottom: "1.25rem",
               padding: "0.75rem 1.15rem",
-              background: "#eff6ff",
-              border: "1px solid #bfdbfe",
-              borderRadius: "0.65rem",
+              background: "rgba(99,102,241,0.1)",
+              border: "1px solid rgba(99,102,241,0.3)",
+              borderRadius: "0.75rem",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
               flexWrap: "wrap",
               gap: "0.65rem",
-              boxShadow: "var(--shadow-sm)"
+              backdropFilter: "blur(8px)",
             }}
           >
             <div style={{ display: "flex", alignItems: "center", gap: "0.5rem" }}>
-              <AlertCircle size={17} color="#3b82f6" />
-              <span style={{ fontSize: "0.85rem", color: "#1e40af" }}>
-                Masukkan <strong>Username GitHub</strong> Anda di menu Pengaturan agar streak dan aktivitas commit langsung terdeteksi otomatis.
+              <AlertCircle size={17} color="#818cf8" />
+              <span style={{ fontSize: "0.85rem", color: "var(--text-sub)" }}>
+                Masukkan <strong style={{ color: "var(--text-main)" }}>Username GitHub</strong> Anda di Pengaturan agar streak terdeteksi otomatis.
               </span>
             </div>
             <button
               onClick={() => setIsSettingsOpen(true)}
               className="btn btn-outline"
-              style={{ fontSize: "0.78rem", padding: "0.35rem 0.75rem", borderColor: "#93c5fd", color: "#1d4ed8" }}
+              style={{ fontSize: "0.78rem", padding: "0.35rem 0.75rem" }}
             >
               Atur Sekarang <ArrowRight size={13} />
             </button>
