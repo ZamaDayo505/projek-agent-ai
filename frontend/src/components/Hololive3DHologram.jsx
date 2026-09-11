@@ -1,497 +1,567 @@
 import React, { useEffect, useRef, useState, useCallback } from "react";
-import * as THREE from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
-import { VRMLoaderPlugin, VRMUtils } from "@pixiv/three-vrm";
+import { VRMLoaderPlugin } from "@pixiv/three-vrm";
+import * as THREE from "three";
 import {
-  Volume2, VolumeX, RotateCw, Music2, Sparkles,
-  MessageCircle, BookOpen, ChevronRight
+  Volume2, VolumeX, Music2, MessageCircle,
+  ChevronRight, Loader2
 } from "lucide-react";
 import { hologramAudio } from "../utils/audioEffects";
 
-// ─── Character definitions ────────────────────────────────────────────────────
-const CHARACTERS = {
+// ─── Character config ─────────────────────────────────────────────────────────
+const CHARS = {
   kobo: {
-    name: "Kobo Kanaeru",
-    badge: "Hololive ID Gen 3",
-    color: "#0284c7",
-    glow: "rgba(2,132,199,0.45)",
-    accentBg: "rgba(2,132,199,0.12)",
-    emoji: "🌧️",
-    vrmUrl: null, // VRM fallback — procedural used
-    buildDialogues: (pending, streak, committed) => [
-      `Eeeeyaaa! Halo Zama! Gimana kabarmu hari ini? Pawang hujan selalu di sini nemenin kamu! 🌧️`,
-      pending > 0
-        ? `Woy! Ada ${pending} PR yang belum kelar! Kerjain sekarang apa mau disamber petir? Canda~ ⚡`
-        : `Mantap bray! Semua PR beres tanpa sisa! Kobo bangga banget sama kamu! 🌟`,
-      committed
-        ? `Streak ${streak} hari kamu udah aman hari ini! Gacor bener dah kodingannya! 🔥`
-        : `Hari ini belum commit ke GitHub lho! Push buruan sebelum jam 12 malem! ⏳`,
-      `Haus gak? Jangan lupa minum air putih, jangan cuma nenggak kopi terus ya! 💧`,
+    name: "Kobo Kanaeru", badge: "Hololive ID Gen 3",
+    color: "#38bdf8", glow: "rgba(56,189,248,0.5)", accentBg: "rgba(56,189,248,0.12)",
+    emoji: "🌧️", vrmFile: "/models/kobo.vrm",
+    buildDialogues: (p, s, c) => [
+      `Eeeeyaaa! Halo Zama! Gimana kabarmu hari ini? Pawang hujan selalu nemenin kamu! 🌧️`,
+      p > 0 ? `Woy! Ada ${p} PR belum kelar! Kerjain sekarang apa mau disamber petir? ⚡` : `Mantap bray! Semua PR beres! Kobo bangga sama kamu! 🌟`,
+      c ? `Streak ${s} hari udah aman! Gacor bener dah kodingannya! 🔥` : `Hari ini belum commit! Push buruan sebelum jam 12! ⏳`,
+      `Jangan lupa minum air putih ya, jangan cuma kopi terus! 💧`,
     ],
   },
   gura: {
-    name: "Gawr Gura",
-    badge: "Hololive English",
-    color: "#0ea5e9",
-    glow: "rgba(14,165,233,0.45)",
-    accentBg: "rgba(14,165,233,0.12)",
-    emoji: "🦈",
-    vrmUrl: null,
-    buildDialogues: (pending, streak, committed) => [
+    name: "Gawr Gura", badge: "Hololive EN",
+    color: "#818cf8", glow: "rgba(129,140,248,0.5)", accentBg: "rgba(129,140,248,0.12)",
+    emoji: "🦈", vrmFile: "/models/gura.vrm",
+    buildDialogues: (p, s, c) => [
       `A! Hello Zama! How's your day? Shark is here to cheer you on! 🦈`,
-      pending > 0
-        ? `Hey! You still have ${pending} tasks to finish! Let's bite through them together! 📚`
-        : `Yay! All homework is done! You're the apex student today! ✨`,
-      committed
-        ? `Awesome! GitHub streak is at ${streak} days! Keep the fire burning! 🔥`
-        : `Don't forget to push a commit today before midnight, okay? ⏳`,
-      `Remember to stay hydrated! Fish need water and so do programmers! 🌊`,
+      p > 0 ? `Hey! Still ${p} tasks left! Let's bite through them! 📚` : `Yay! All homework done! You're the apex student! ✨`,
+      c ? `GitHub streak ${s} days strong! Keep it up! 🔥` : `Don't forget to push a commit before midnight! ⏳`,
+      `Stay hydrated! Fish need water and so do programmers! 🌊`,
     ],
   },
   miku: {
-    name: "Hatsune Miku",
-    badge: "Vocaloid 01",
-    color: "#06b6d4",
-    glow: "rgba(6,182,212,0.45)",
-    accentBg: "rgba(6,182,212,0.12)",
-    emoji: "🎵",
-    vrmUrl: null,
-    buildDialogues: (pending, streak, committed) => [
+    name: "Hatsune Miku", badge: "Vocaloid 01",
+    color: "#22d3ee", glow: "rgba(34,211,238,0.5)", accentBg: "rgba(34,211,238,0.12)",
+    emoji: "🎵", vrmFile: "/models/miku.vrm",
+    buildDialogues: (p, s, c) => [
       `ミクだよ！元気してた、Zama？いつも応援しているよ！🩵`,
-      pending > 0
-        ? `${pending}個の宿題がまだ残っているよ！ミクと一緒に頑張ろう！📚`
-        : `すごい！全部の宿題が終わったね！本当に偉いよ！✨`,
-      committed
-        ? `GitHubのストリーク${streak}日！完璧だよ！🔥`
-        : `今日はまだcommitしてないよ！夜中の前に押してね！⏳`,
+      p > 0 ? `${p}個の宿題がまだ残っているよ！ミクと一緒に頑張ろう！📚` : `すごい！全部の宿題が終わったね！本当に偉いよ！✨`,
+      c ? `GitHubのストリーク${s}日！完璧だよ！🔥` : `今日はまだcommitしてないよ！夜中の前に押してね！⏳`,
       `ちょっと休んで、水を飲んでね！あなたの体が大事だから！💧`,
     ],
   },
 };
 
-// ─── Build procedural chibi mesh (fallback when no VRM available) ──────────────
-function buildProceduralCharacter(type) {
-  const group = new THREE.Group();
+// ─── 2D Canvas Hologram Renderer (fallback when no VRM) ──────────────────────
+function draw2DHologram(canvas, charKey, tick, dancing, profile) {
+  const ctx = canvas.getContext("2d");
+  const W = canvas.width, H = canvas.height;
+  const cx = W / 2, cy = H / 2;
+  ctx.clearRect(0, 0, W, H);
 
-  const palette = {
-    kobo: { hair: 0x0284c7, outfit: 0xfacc15, skin: 0xfef3c7 },
-    gura: { hair: 0x93c5fd, outfit: 0x1e3a8a, skin: 0xfef3c7 },
-    miku: { hair: 0x06b6d4, outfit: 0x334155, skin: 0xfef3c7 },
-  }[type];
+  const col = profile.color;
+  const glowCol = profile.glow;
 
-  const toonMat = (hex, opacity = 1) => new THREE.MeshToonMaterial({
-    color: hex, transparent: opacity < 1, opacity
-  });
+  // Background radial
+  const bg = ctx.createRadialGradient(cx, cy, 10, cx, cy, H * 0.65);
+  bg.addColorStop(0, "rgba(20,10,50,0.85)");
+  bg.addColorStop(1, "rgba(5,5,20,0)");
+  ctx.fillStyle = bg;
+  ctx.fillRect(0, 0, W, H);
 
-  // Head
-  const head = new THREE.Mesh(new THREE.SphereGeometry(0.48, 28, 28), toonMat(palette.skin));
-  head.position.y = 0.7;
-  group.add(head);
+  // Platform ellipse
+  const pY = H * 0.84;
+  const pW = W * 0.38, pH = 14;
+  const platGrad = ctx.createRadialGradient(cx, pY, 2, cx, pY, pW);
+  platGrad.addColorStop(0, col);
+  platGrad.addColorStop(0.5, glowCol.replace("0.5", "0.3"));
+  platGrad.addColorStop(1, "transparent");
+  ctx.beginPath();
+  ctx.ellipse(cx, pY, pW, pH, 0, 0, Math.PI * 2);
+  ctx.fillStyle = platGrad;
+  ctx.fill();
 
-  // Eyes
-  const eyeGeo = new THREE.CapsuleGeometry(0.055, 0.08, 8, 12);
-  const eyeMat = toonMat(0x0c4a6e);
-  [-0.16, 0.16].forEach((x) => {
-    const eye = new THREE.Mesh(eyeGeo, eyeMat);
-    eye.position.set(x, 0.72, 0.44);
-    group.add(eye);
-  });
-
-  // Cheeks
-  const cheekMat = toonMat(0xf472b6, 0.6);
-  const cheekGeo = new THREE.SphereGeometry(0.055, 12, 12);
-  [-0.26, 0.26].forEach((x) => {
-    const c = new THREE.Mesh(cheekGeo, cheekMat);
-    c.position.set(x, 0.61, 0.41);
-    group.add(c);
-  });
-
-  // Hair cap
-  const hair = new THREE.Mesh(
-    new THREE.SphereGeometry(0.515, 28, 16, 0, Math.PI * 2, 0, Math.PI / 2.2),
-    toonMat(palette.hair)
-  );
-  hair.position.set(0, 0.78, -0.02);
-  group.add(hair);
-
-  // Body
-  const body = new THREE.Mesh(new THREE.ConeGeometry(0.44, 0.8, 22), toonMat(palette.outfit));
-  body.position.y = 0.15;
-  group.add(body);
-
-  // Arms
-  const armGeo = new THREE.CapsuleGeometry(0.09, 0.3, 8, 12);
-  [-1, 1].forEach((side) => {
-    const arm = new THREE.Mesh(armGeo, toonMat(palette.skin));
-    arm.position.set(side * 0.55, 0.3, 0);
-    arm.rotation.z = side * 0.35;
-    group.add(arm);
-  });
-
-  // Character extras
-  const extras = [];
-  if (type === "kobo") {
-    const bunGeo = new THREE.SphereGeometry(0.22, 16, 16);
-    const leftBun = new THREE.Mesh(bunGeo, toonMat(palette.hair));
-    leftBun.position.set(-0.48, 0.92, 0);
-    const rightBun = new THREE.Mesh(bunGeo, toonMat(palette.hair));
-    rightBun.position.set(0.48, 0.92, 0);
-    group.add(leftBun, rightBun);
-    extras.push({ mesh: leftBun, swing: "bun_left" }, { mesh: rightBun, swing: "bun_right" });
-  } else if (type === "gura") {
-    const fin = new THREE.Mesh(new THREE.ConeGeometry(0.13, 0.38, 12), toonMat(palette.outfit));
-    fin.position.set(0, 1.28, -0.06);
-    fin.rotation.x = -0.25;
-    group.add(fin);
-    const tail = new THREE.Mesh(new THREE.ConeGeometry(0.19, 0.68, 12), toonMat(palette.outfit));
-    tail.position.set(0, -0.08, -0.5);
-    tail.rotation.x = Math.PI * 0.55;
-    group.add(tail);
-    extras.push({ mesh: tail, swing: "shark_tail" });
-  } else {
-    // Miku twin tails
-    const tailGeo = new THREE.CylinderGeometry(0.07, 0.035, 0.72, 10);
-    [-1, 1].forEach((side) => {
-      const t = new THREE.Mesh(tailGeo, toonMat(palette.hair));
-      t.position.set(side * 0.46, 0.42, -0.18);
-      t.rotation.z = side * 0.5;
-      group.add(t);
-      extras.push({ mesh: t, swing: `miku_tail_${side}` });
-    });
+  // Platform rings
+  for (let r = 0; r < 2; r++) {
+    ctx.beginPath();
+    ctx.ellipse(cx, pY, pW * (0.7 + r * 0.35), pH * (0.6 + r * 0.3), 0, 0, Math.PI * 2);
+    ctx.strokeStyle = r === 0 ? col : "rgba(139,92,246,0.7)";
+    ctx.lineWidth = r === 0 ? 2 : 1;
+    ctx.stroke();
   }
 
-  return { group, extras };
+  // Body float
+  const floatY = Math.sin(tick * 1.5) * (dancing ? 10 : 5);
+  const bodyY = cy - 20 + floatY;
+
+  // Hologram scan lines (on body area)
+  ctx.save();
+  ctx.globalAlpha = 0.07;
+  for (let y = bodyY - 130; y < bodyY + 60; y += 4) {
+    ctx.fillStyle = col;
+    ctx.fillRect(cx - 80, y, 160, 1.5);
+  }
+  ctx.restore();
+
+  // Body glow aura
+  const aura = ctx.createRadialGradient(cx, bodyY, 20, cx, bodyY, 110);
+  aura.addColorStop(0, glowCol.replace("0.5", "0.12"));
+  aura.addColorStop(1, "transparent");
+  ctx.fillStyle = aura;
+  ctx.fillRect(cx - 120, bodyY - 140, 240, 210);
+
+  // ─── Draw character based on charKey ─────────────────────────────────────
+  const wobble = dancing ? Math.sin(tick * 8) * 6 : 0;
+  ctx.save();
+  ctx.translate(cx + wobble, bodyY);
+
+  // Legs
+  ctx.fillStyle = charKey === "gura" ? "#1e3a8a" : charKey === "miku" ? "#1e293b" : "#1e293b";
+  ctx.beginPath(); ctx.roundRect(-22, 28, 16, 40, 4); ctx.fill();
+  ctx.beginPath(); ctx.roundRect(6, 28, 16, 40, 4); ctx.fill();
+  // Shoes
+  ctx.fillStyle = "#0f172a";
+  ctx.beginPath(); ctx.ellipse(-14, 68, 14, 7, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(14, 68, 14, 7, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Body/dress
+  const bodyCol = charKey === "gura" ? "#1e3a8a" : charKey === "miku" ? "#1e3a5f" : "#0369a1";
+  ctx.fillStyle = bodyCol;
+  ctx.beginPath(); ctx.roundRect(-32, -10, 64, 42, [6, 6, 18, 18]); ctx.fill();
+
+  // Outfit detail / tie
+  if (charKey === "miku") {
+    ctx.fillStyle = "#22d3ee";
+    ctx.fillRect(-3, -8, 6, 22);
+    ctx.fillStyle = "#0e7490";
+    ctx.beginPath(); ctx.roundRect(-28, -9, 56, 14, 4); ctx.fill(); // collar
+  } else if (charKey === "gura") {
+    ctx.fillStyle = "#93c5fd";
+    ctx.beginPath(); ctx.roundRect(-28, -8, 56, 12, 4); ctx.fill();
+    ctx.fillStyle = "#bfdbfe";
+    ctx.fillRect(-3, -5, 6, 20);
+  } else {
+    ctx.fillStyle = "#facc15";
+    ctx.beginPath(); ctx.roundRect(-30, -8, 60, 12, 4); ctx.fill(); // raincoat collar
+  }
+
+  // Arms
+  const armSway = Math.sin(tick * 1.8) * (dancing ? 15 : 4);
+  ctx.fillStyle = "#fde68a";
+  // Left arm
+  ctx.save();
+  ctx.translate(-36, 2);
+  ctx.rotate((-0.25 + armSway * 0.02) * Math.PI);
+  ctx.beginPath(); ctx.roundRect(-7, 0, 14, 36, 7); ctx.fill();
+  ctx.restore();
+  // Right arm
+  ctx.save();
+  ctx.translate(36, 2);
+  ctx.rotate((0.25 - armSway * 0.02) * Math.PI);
+  ctx.beginPath(); ctx.roundRect(-7, 0, 14, 36, 7); ctx.fill();
+  ctx.restore();
+
+  // Neck
+  ctx.fillStyle = "#fde68a";
+  ctx.beginPath(); ctx.roundRect(-8, -22, 16, 14, 4); ctx.fill();
+
+  // Head (round anime chibi)
+  const headSwayX = Math.sin(tick * 1.1) * (dancing ? 6 : 2);
+  ctx.save();
+  ctx.translate(headSwayX, 0);
+
+  // Head shadow
+  ctx.fillStyle = "rgba(0,0,0,0.15)";
+  ctx.beginPath(); ctx.ellipse(2, -85, 42, 38, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Head base
+  ctx.fillStyle = "#fef3c7";
+  ctx.beginPath(); ctx.ellipse(0, -88, 40, 36, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Hair base (back)
+  const hairCol = charKey === "gura" ? "#93c5fd" : charKey === "miku" ? "#06b6d4" : "#0284c7";
+  ctx.fillStyle = hairCol;
+  ctx.beginPath(); ctx.ellipse(0, -92, 42, 34, 0, 0, Math.PI); ctx.fill();
+
+  // Face — eyes (anime big eyes)
+  // Left eye
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.ellipse(-14, -89, 12, 10, -0.1, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = charKey === "gura" ? "#6366f1" : charKey === "miku" ? "#0891b2" : "#0284c7";
+  ctx.beginPath(); ctx.ellipse(-14, -89, 8, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#000";
+  ctx.beginPath(); ctx.ellipse(-14, -89, 5, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.ellipse(-11, -92, 2.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Right eye
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.ellipse(14, -89, 12, 10, 0.1, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = charKey === "gura" ? "#6366f1" : charKey === "miku" ? "#0891b2" : "#0284c7";
+  ctx.beginPath(); ctx.ellipse(14, -89, 8, 8, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#000";
+  ctx.beginPath(); ctx.ellipse(14, -89, 5, 6, 0, 0, Math.PI * 2); ctx.fill();
+  ctx.fillStyle = "#fff";
+  ctx.beginPath(); ctx.ellipse(17, -92, 2.5, 2.5, 0, 0, Math.PI * 2); ctx.fill();
+
+  // Blush cheeks
+  ctx.save();
+  ctx.globalAlpha = 0.55;
+  ctx.fillStyle = "#f9a8d4";
+  ctx.beginPath(); ctx.ellipse(-26, -83, 10, 6, 0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.beginPath(); ctx.ellipse(26, -83, 10, 6, -0.2, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+
+  // Mouth (small cute smile)
+  ctx.strokeStyle = "#e11d48";
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.arc(0, -78, 5, 0.1 * Math.PI, 0.9 * Math.PI);
+  ctx.stroke();
+
+  // Hair front bangs
+  ctx.fillStyle = hairCol;
+  ctx.beginPath();
+  ctx.moveTo(-38, -100); ctx.quadraticCurveTo(-35, -78, -22, -76);
+  ctx.quadraticCurveTo(-18, -100, -10, -102);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(38, -100); ctx.quadraticCurveTo(35, -78, 22, -76);
+  ctx.quadraticCurveTo(18, -100, 10, -102);
+  ctx.fill();
+  ctx.beginPath();
+  ctx.moveTo(-12, -104); ctx.quadraticCurveTo(0, -80, 12, -104);
+  ctx.fill();
+
+  // Character-specific accessories
+  if (charKey === "kobo") {
+    // Rain shaman buns
+    const bunSway = Math.sin(tick * 2.5) * 8;
+    ctx.fillStyle = hairCol;
+    ctx.beginPath(); ctx.ellipse(-46 + bunSway * 0.3, -97, 16, 16, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(46 - bunSway * 0.3, -97, 16, 16, 0, 0, Math.PI * 2); ctx.fill();
+    // Rain shaman gem
+    ctx.fillStyle = "#fbbf24";
+    ctx.beginPath(); ctx.ellipse(0, -126, 6, 6, 0, 0, Math.PI * 2); ctx.fill();
+  } else if (charKey === "gura") {
+    // Shark fin on head
+    ctx.fillStyle = "#93c5fd";
+    ctx.beginPath();
+    ctx.moveTo(-8, -122); ctx.lineTo(0, -146); ctx.lineTo(8, -122);
+    ctx.closePath(); ctx.fill();
+    // Shark tail (animated)
+    const tailAng = Math.sin(tick * 3) * 0.25;
+    ctx.save();
+    ctx.translate(0, 38);
+    ctx.rotate(tailAng);
+    ctx.fillStyle = "#1e3a8a";
+    ctx.beginPath();
+    ctx.moveTo(-8, 0); ctx.lineTo(-24, 28); ctx.lineTo(-6, 20); ctx.lineTo(0, 34);
+    ctx.lineTo(6, 20); ctx.lineTo(24, 28); ctx.lineTo(8, 0);
+    ctx.closePath(); ctx.fill();
+    ctx.restore();
+  } else {
+    // Miku twin tails (long animated)
+    const tailFlow = Math.sin(tick * 1.8) * 12;
+    ctx.strokeStyle = hairCol;
+    ctx.lineWidth = 18;
+    ctx.lineCap = "round";
+    // Left tail
+    ctx.beginPath();
+    ctx.moveTo(-30, -92);
+    ctx.bezierCurveTo(-60, -60, -70 + tailFlow, 0, -55 + tailFlow * 0.5, 60);
+    ctx.stroke();
+    // Right tail
+    ctx.beginPath();
+    ctx.moveTo(30, -92);
+    ctx.bezierCurveTo(60, -60, 70 - tailFlow, 0, 55 - tailFlow * 0.5, 60);
+    ctx.stroke();
+
+    // Miku headset
+    ctx.strokeStyle = "#0e7490";
+    ctx.lineWidth = 5;
+    ctx.beginPath(); ctx.arc(0, -92, 46, -Math.PI, 0); ctx.stroke();
+    ctx.fillStyle = "#0e7490";
+    ctx.beginPath(); ctx.ellipse(-46, -92, 6, 9, 0, 0, Math.PI * 2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(46, -92, 6, 9, 0, 0, Math.PI * 2); ctx.fill();
+  }
+
+  ctx.restore(); // head sway
+  ctx.restore(); // body translate
+
+  // Hologram particles floating up
+  ctx.save();
+  for (let i = 0; i < 12; i++) {
+    const px = cx + Math.sin(i * 2.1 + tick * 0.8) * (60 + i * 8);
+    const py = pY - ((tick * 30 + i * 28) % 220);
+    const alpha = Math.max(0, 1 - py / 220) * 0.5;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = i % 2 === 0 ? col : "rgba(139,92,246,0.9)";
+    ctx.beginPath();
+    ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+  ctx.restore();
+
+  // Bottom fade vignette
+  const vignette = ctx.createLinearGradient(0, H * 0.75, 0, H);
+  vignette.addColorStop(0, "transparent");
+  vignette.addColorStop(1, "rgba(5,5,20,0.7)");
+  ctx.fillStyle = vignette;
+  ctx.fillRect(0, H * 0.75, W, H * 0.25);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function Hololive3DHologram({ streakData, homeworkList = [], onNavigate }) {
-  const mountRef = useRef(null);
+  const canvasRef = useRef(null);
+  const rafRef = useRef(null);
+  const tickRef = useRef(0);
+  const threeRef = useRef({ renderer: null, scene: null, camera: null, vrm: null, rafId: null });
+
   const [charKey, setCharKey] = useState("kobo");
   const [muted, setMuted] = useState(false);
   const [dancing, setDancing] = useState(false);
   const [dialogueIdx, setDialogueIdx] = useState(0);
-  const [showDialogue, setShowDialogue] = useState(true);
-  const [vrmLoaded, setVrmLoaded] = useState(false);
-  const [loadingVrm, setLoadingVrm] = useState(false);
+  const [vrmStatus, setVrmStatus] = useState("idle"); // idle | loading | loaded | missing
 
-  // Three.js refs (stable across renders)
-  const threeRef = useRef({
-    renderer: null, scene: null, camera: null, clock: null,
-    charGroup: null, extras: [], vrm: null,
-    rafId: null,
-    drag: { active: false, lastX: 0, rotY: 0, targetRotY: 0 },
-  });
+  const dancingRef = useRef(false);
+  const charKeyRef = useRef("kobo");
 
   const pendingCount = homeworkList.filter((h) => !h.is_completed).length;
   const streak = streakData?.current_streak ?? 0;
   const committed = !!streakData?.committed_today;
 
-  const profile = CHARACTERS[charKey];
+  const profile = CHARS[charKey];
   const dialogues = profile.buildDialogues(pendingCount, streak, committed);
   const currentDialogue = dialogues[dialogueIdx % dialogues.length];
 
-  // ── Next dialogue ──────────────────────────────────────────────────────────
+  // Keep refs in sync
+  useEffect(() => { dancingRef.current = dancing; }, [dancing]);
+  useEffect(() => { charKeyRef.current = charKey; }, [charKey]);
+
+  // ── VRM Loader ─────────────────────────────────────────────────────────────
+  const loadVRM = useCallback(async (key) => {
+    const vrmPath = CHARS[key].vrmFile;
+
+    // Check if file exists
+    try {
+      const probe = await fetch(vrmPath, { method: "HEAD" });
+      if (!probe.ok) { setVrmStatus("missing"); return; }
+    } catch {
+      setVrmStatus("missing"); return;
+    }
+
+    setVrmStatus("loading");
+    const r = threeRef.current;
+
+    // Setup Three.js if not yet
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    if (!r.renderer) {
+      r.scene = new THREE.Scene();
+      r.camera = new THREE.PerspectiveCamera(28, canvas.width / (canvas.height - 60), 0.1, 20);
+      r.camera.position.set(0, 1.4, 3.8);
+      r.camera.lookAt(0, 1.0, 0);
+
+      r.renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+      r.renderer.setSize(canvas.width, canvas.height - 60);
+      r.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+      r.renderer.outputColorSpace = THREE.SRGBColorSpace;
+
+      // Lights
+      r.scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+      const dir = new THREE.DirectionalLight(0xffffff, 1.8);
+      dir.position.set(1, 3, 2);
+      r.scene.add(dir);
+      const rim = new THREE.PointLight(0x7c3aed, 2.2, 8);
+      rim.position.set(-2, 1.5, -2);
+      r.scene.add(rim);
+      const fill = new THREE.PointLight(0x22d3ee, 1.5, 6);
+      fill.position.set(1, 0, 2);
+      r.scene.add(fill);
+    }
+
+    // Remove old VRM
+    if (r.vrm) {
+      r.scene.remove(r.vrm.scene);
+      r.vrm = null;
+    }
+
+    const loader = new GLTFLoader();
+    loader.register((parser) => new VRMLoaderPlugin(parser));
+
+    try {
+      const gltf = await new Promise((resolve, reject) =>
+        loader.load(vrmPath, resolve, undefined, reject)
+      );
+      const vrm = gltf.userData.vrm;
+      r.vrm = vrm;
+      r.scene.add(vrm.scene);
+      setVrmStatus("loaded");
+
+      // VRM animation loop
+      cancelAnimationFrame(r.rafId);
+      const clock = new THREE.Clock();
+      const animateVRM = () => {
+        r.rafId = requestAnimationFrame(animateVRM);
+        const dt = clock.getDelta();
+        if (r.vrm) {
+          r.vrm.update(dt);
+          // Idle sway
+          const t = clock.elapsedTime;
+          vrm.scene.rotation.y = Math.sin(t * 0.6) * 0.08;
+          vrm.scene.position.y = Math.sin(t * 1.3) * 0.03;
+        }
+        r.renderer.render(r.scene, r.camera);
+      };
+      animateVRM();
+    } catch {
+      setVrmStatus("missing");
+    }
+  }, []);
+
+  useEffect(() => {
+    loadVRM(charKey);
+  }, [charKey, loadVRM]);
+
+  // ── 2D Canvas Loop (when VRM not loaded) ───────────────────────────────────
+  useEffect(() => {
+    if (vrmStatus === "loaded") {
+      cancelAnimationFrame(rafRef.current);
+      return;
+    }
+
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const loop = () => {
+      tickRef.current += 0.016;
+      draw2DHologram(canvas, charKeyRef.current, tickRef.current, dancingRef.current, CHARS[charKeyRef.current]);
+      rafRef.current = requestAnimationFrame(loop);
+    };
+    rafRef.current = requestAnimationFrame(loop);
+
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [vrmStatus, charKey]);
+
+  // ── Greet on character switch ──────────────────────────────────────────────
+  useEffect(() => {
+    if (!muted) {
+      const t = setTimeout(() => hologramAudio.speakVoiceLine(dialogues[0], charKey), 500);
+      return () => clearTimeout(t);
+    }
+  }, [charKey]); // eslint-disable-line
+
   const nextDialogue = useCallback(() => {
-    setDialogueIdx((i) => (i + 1) % dialogues.length);
-    if (!muted) hologramAudio.speakVoiceLine(dialogues[(dialogueIdx + 1) % dialogues.length], charKey);
+    const next = (dialogueIdx + 1) % dialogues.length;
+    setDialogueIdx(next);
+    if (!muted) hologramAudio.speakVoiceLine(dialogues[next], charKey);
   }, [dialogues, dialogueIdx, muted, charKey]);
 
-  // ── Toggle dance ──────────────────────────────────────────────────────────
   const toggleDance = useCallback(() => {
     setDancing((d) => !d);
     if (!muted) hologramAudio.playBounceSound();
   }, [muted]);
 
-  // ── Toggle mute ───────────────────────────────────────────────────────────
   const toggleMute = useCallback(() => {
-    setMuted((m) => {
-      hologramAudio.toggleMute();
-      return !m;
-    });
+    setMuted((m) => { hologramAudio.toggleMute(); return !m; });
   }, []);
 
-  // ── Greet on mount & on character switch ──────────────────────────────────
-  useEffect(() => {
-    if (!muted) {
-      const timer = setTimeout(() => hologramAudio.speakVoiceLine(dialogues[0], charKey), 600);
-      return () => clearTimeout(timer);
-    }
-  }, [charKey]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Main Three.js setup ───────────────────────────────────────────────────
-  useEffect(() => {
-    const el = mountRef.current;
-    if (!el) return;
-
-    const W = el.clientWidth || 360;
-    const H = 300;
-    const r = threeRef.current;
-
-    // Scene
-    r.scene = new THREE.Scene();
-    r.clock = new THREE.Clock();
-
-    // Camera
-    r.camera = new THREE.PerspectiveCamera(40, W / H, 0.1, 100);
-    r.camera.position.set(0, 1.2, 4.2);
-    r.camera.lookAt(0, 0.8, 0);
-
-    // Renderer
-    r.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
-    r.renderer.setSize(W, H);
-    r.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-    r.renderer.shadowMap.enabled = true;
-    el.innerHTML = "";
-    el.appendChild(r.renderer.domElement);
-
-    // Lights
-    r.scene.add(new THREE.AmbientLight(0xffffff, 0.7));
-    const keyLight = new THREE.DirectionalLight(0xffffff, 1.5);
-    keyLight.position.set(2, 4, 3);
-    r.scene.add(keyLight);
-    const rimLight = new THREE.PointLight(0x7c3aed, 2.5, 8);
-    rimLight.position.set(-2, 2, -2);
-    r.scene.add(rimLight);
-    const cyanFill = new THREE.PointLight(0x22d3ee, 1.8, 6);
-    cyanFill.position.set(0, -0.5, 2);
-    r.scene.add(cyanFill);
-
-    // Platform rings
-    const ringDefs = [
-      { inner: 0.65, outer: 0.8, color: 0x7c3aed, opacity: 0.7, y: -0.31 },
-      { inner: 0.38, outer: 0.5, color: 0x22d3ee, opacity: 0.85, y: -0.29 },
-    ];
-    ringDefs.forEach(({ inner, outer, color, opacity, y }) => {
-      const ring = new THREE.Mesh(
-        new THREE.RingGeometry(inner, outer, 48),
-        new THREE.MeshBasicMaterial({ color, side: THREE.DoubleSide, transparent: true, opacity })
-      );
-      ring.rotation.x = Math.PI / 2;
-      ring.position.y = y;
-      r.scene.add(ring);
-    });
-
-    // Floating particles
-    const pCount = 60;
-    const pPos = new Float32Array(pCount * 3);
-    for (let i = 0; i < pCount; i++) {
-      pPos[i * 3]     = (Math.random() - 0.5) * 2;
-      pPos[i * 3 + 1] = Math.random() * 2.5 - 0.2;
-      pPos[i * 3 + 2] = (Math.random() - 0.5) * 2;
-    }
-    const pGeo = new THREE.BufferGeometry();
-    pGeo.setAttribute("position", new THREE.BufferAttribute(pPos, 3));
-    const particles = new THREE.Points(pGeo, new THREE.PointsMaterial({
-      color: 0x818cf8, size: 0.035, transparent: true, opacity: 0.7
-    }));
-    r.scene.add(particles);
-
-    // Build procedural character
-    const { group, extras } = buildProceduralCharacter(charKey);
-    group.position.set(0, 0.35, 0);
-    r.charGroup = group;
-    r.extras = extras;
-    r.scene.add(group);
-
-    // Try to load VRM (async, non-blocking)
-    const loader = new GLTFLoader();
-    loader.register((parser) => new VRMLoaderPlugin(parser));
-
-    // ── Animation loop ────────────────────────────────────────────────────
-    const dancingRef = { value: false };
-    const mutedRef   = { value: false };
-    // We track dancing via closure update below
-    const animate = () => {
-      r.rafId = requestAnimationFrame(animate);
-      const t = r.clock.getElapsedTime();
-      const dt = r.clock.getDelta ? 0.016 : 0.016;
-
-      // Smooth rotation damping
-      r.drag.rotY += (r.drag.targetRotY - r.drag.rotY) * 0.08;
-      if (r.charGroup) {
-        r.charGroup.rotation.y = r.drag.rotY;
-        // Idle float
-        r.charGroup.position.y = 0.35 + Math.sin(t * 1.2) * 0.04;
-      }
-
-      // Character-specific swings
-      r.extras.forEach(({ mesh, swing }) => {
-        if (!mesh) return;
-        if (swing.startsWith("bun")) {
-          mesh.rotation.z = Math.sin(t * 2.5) * 0.12;
-        } else if (swing === "shark_tail") {
-          mesh.rotation.z = Math.sin(t * 3) * 0.2;
-        } else if (swing.startsWith("miku_tail")) {
-          const side = swing.endsWith("1") ? 1 : -1;
-          mesh.rotation.z = side * (0.5 + Math.sin(t * 2.2) * 0.15);
-        }
-      });
-
-      // Dance bounce
-      if (dancingRef.value && r.charGroup) {
-        r.charGroup.position.y = 0.35 + Math.abs(Math.sin(t * 5)) * 0.18;
-        r.charGroup.rotation.z = Math.sin(t * 4) * 0.08;
-      } else if (r.charGroup) {
-        r.charGroup.rotation.z += (0 - r.charGroup.rotation.z) * 0.05;
-      }
-
-      // Particles drift upward
-      const posArr = particles.geometry.attributes.position.array;
-      for (let i = 1; i < pCount * 3; i += 3) {
-        posArr[i] += 0.005;
-        if (posArr[i] > 2.5) posArr[i] = -0.2;
-      }
-      particles.geometry.attributes.position.needsUpdate = true;
-      particles.rotation.y += 0.002;
-
-      // VRM update
-      if (r.vrm) r.vrm.update(dt);
-
-      r.renderer.render(r.scene, r.camera);
-    };
-
-    animate();
-
-    // Expose dancingRef setter for the dancing state
-    r.setDancingRef = (v) => { dancingRef.value = v; };
-
-    // ── Drag rotation ─────────────────────────────────────────────────────
-    const canvas = r.renderer.domElement;
-    const onPointerDown = (e) => {
-      r.drag.active = true;
-      r.drag.lastX = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
-    };
-    const onPointerMove = (e) => {
-      if (!r.drag.active) return;
-      const x = e.clientX ?? e.touches?.[0]?.clientX ?? 0;
-      r.drag.targetRotY += (x - r.drag.lastX) * 0.012;
-      r.drag.lastX = x;
-    };
-    const onPointerUp = () => { r.drag.active = false; };
-
-    canvas.addEventListener("pointerdown", onPointerDown);
-    window.addEventListener("pointermove", onPointerMove);
-    window.addEventListener("pointerup", onPointerUp);
-    canvas.addEventListener("touchstart", onPointerDown, { passive: true });
-    window.addEventListener("touchmove", onPointerMove, { passive: true });
-    window.addEventListener("touchend", onPointerUp);
-
-    // ── Resize observer ───────────────────────────────────────────────────
-    const ro = new ResizeObserver(() => {
-      const w = el.clientWidth || 360;
-      r.camera.aspect = w / H;
-      r.camera.updateProjectionMatrix();
-      r.renderer.setSize(w, H);
-    });
-    ro.observe(el);
-
-    return () => {
-      cancelAnimationFrame(r.rafId);
-      canvas.removeEventListener("pointerdown", onPointerDown);
-      window.removeEventListener("pointermove", onPointerMove);
-      window.removeEventListener("pointerup", onPointerUp);
-      canvas.removeEventListener("touchstart", onPointerDown);
-      window.removeEventListener("touchmove", onPointerMove);
-      window.removeEventListener("touchend", onPointerUp);
-      ro.disconnect();
-      r.renderer.dispose();
-    };
-  }, [charKey]); // Re-init on character switch
-
-  // Sync dancing state into animation loop ref
-  useEffect(() => {
-    if (threeRef.current.setDancingRef) threeRef.current.setDancingRef(dancing);
-  }, [dancing]);
+  const switchChar = useCallback((key) => {
+    setCharKey(key);
+    setDialogueIdx(0);
+    setVrmStatus("idle");
+    hologramAudio.playHologramChime();
+  }, []);
 
   return (
-    <div className="hologram-stage" style={{ marginBottom: "0rem" }}>
+    <div className="hologram-stage" style={{ position: "relative" }}>
 
-      {/* Canvas mount */}
-      <div ref={mountRef} style={{ width: "100%", height: "300px", cursor: "grab", position: "relative", zIndex: 2 }} />
+      {/* Canvas — shared between 2D and Three.js VRM */}
+      <canvas
+        ref={canvasRef}
+        width={800}
+        height={300}
+        style={{ width: "100%", height: "300px", display: "block" }}
+      />
 
-      {/* Dialogue bubble */}
-      {showDialogue && (
-        <div style={{
-          position: "absolute",
-          top: "1rem", right: "1rem",
-          maxWidth: "260px",
-          background: "rgba(15,10,40,0.88)",
-          backdropFilter: "blur(16px)",
-          border: `1px solid ${profile.color}55`,
-          borderRadius: "1rem 1rem 0.25rem 1rem",
-          padding: "0.75rem 1rem",
-          boxShadow: `0 8px 24px rgba(0,0,0,0.5), 0 0 20px ${profile.color}25`,
-          zIndex: 5,
-          cursor: "pointer",
-          transition: "all 0.2s ease",
-        }} onClick={nextDialogue}>
-          <p style={{ fontSize: "0.8rem", color: "#e2d9f3", lineHeight: 1.55, margin: 0 }}>
-            {currentDialogue}
-          </p>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "0.3rem", marginTop: "0.5rem" }}>
-            <span style={{ fontSize: "0.68rem", color: profile.color, fontWeight: 600 }}>{profile.name}</span>
-            <ChevronRight size={11} color={profile.color} />
-          </div>
+      {/* VRM loading indicator */}
+      {vrmStatus === "loading" && (
+        <div style={{ position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)", display: "flex", flexDirection: "column", alignItems: "center", gap: "0.5rem", zIndex: 10 }}>
+          <Loader2 size={28} color={profile.color} style={{ animation: "spin 1s linear infinite" }} />
+          <span style={{ fontSize: "0.78rem", color: profile.color }}>Memuat model VRM...</span>
         </div>
       )}
 
-      {/* Character info bar */}
+      {/* VRM missing — hint */}
+      {vrmStatus === "missing" && (
+        <div style={{ position: "absolute", top: "0.75rem", left: "50%", transform: "translateX(-50%)", background: "rgba(0,0,0,0.7)", border: `1px solid ${profile.color}40`, borderRadius: "0.75rem", padding: "0.4rem 0.9rem", backdropFilter: "blur(8px)", zIndex: 10 }}>
+          <span style={{ fontSize: "0.72rem", color: profile.color }}>
+            📁 Taruh <strong>{profile.vrmFile.replace("/models/", "")}</strong> di <code style={{ background: "rgba(255,255,255,0.1)", padding: "0 4px", borderRadius: "3px" }}>frontend/public/models/</code> untuk model 3D
+          </span>
+        </div>
+      )}
+
+      {/* Dialogue bubble */}
+      <div style={{
+        position: "absolute", top: "1rem", right: "1rem",
+        maxWidth: "240px",
+        background: "rgba(10,5,30,0.9)",
+        backdropFilter: "blur(16px)",
+        border: `1px solid ${profile.color}44`,
+        borderRadius: "1rem 1rem 0.25rem 1rem",
+        padding: "0.7rem 0.9rem",
+        boxShadow: `0 8px 24px rgba(0,0,0,0.5), 0 0 20px ${profile.color}20`,
+        zIndex: 5, cursor: "pointer",
+      }} onClick={nextDialogue}>
+        <p style={{ fontSize: "0.78rem", color: "#e2d9f3", lineHeight: 1.55, margin: 0 }}>
+          {currentDialogue}
+        </p>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "flex-end", gap: "0.25rem", marginTop: "0.4rem" }}>
+          <span style={{ fontSize: "0.66rem", color: profile.color, fontWeight: 700 }}>{profile.name}</span>
+          <ChevronRight size={10} color={profile.color} />
+        </div>
+      </div>
+
+      {/* Bottom control bar */}
       <div style={{
         position: "relative", zIndex: 3,
-        padding: "0.65rem 1.25rem",
-        display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.75rem",
-        background: "rgba(0,0,0,0.35)",
-        backdropFilter: "blur(8px)",
-        borderTop: `1px solid ${profile.color}30`,
+        padding: "0.6rem 1.1rem",
+        display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: "0.6rem",
+        background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)",
+        borderTop: `1px solid ${profile.color}25`,
       }}>
-        {/* Character selector pills */}
-        <div style={{ display: "flex", gap: "0.4rem" }}>
-          {Object.entries(CHARACTERS).map(([key, ch]) => (
-            <button
-              key={key}
-              onClick={() => { setCharKey(key); setDialogueIdx(0); hologramAudio.playHologramChime(); }}
-              style={{
-                padding: "0.3rem 0.75rem",
-                borderRadius: "9999px",
-                fontSize: "0.75rem",
-                fontWeight: 700,
-                cursor: "pointer",
-                border: `1px solid ${charKey === key ? ch.color : "rgba(255,255,255,0.12)"}`,
-                background: charKey === key ? ch.accentBg : "transparent",
-                color: charKey === key ? ch.color : "var(--text-sub)",
-                transition: "all 0.15s ease",
-                boxShadow: charKey === key ? `0 0 12px ${ch.color}40` : "none",
-              }}
-            >
+        {/* Character pills */}
+        <div style={{ display: "flex", gap: "0.35rem" }}>
+          {Object.entries(CHARS).map(([key, ch]) => (
+            <button key={key} onClick={() => switchChar(key)} style={{
+              padding: "0.28rem 0.7rem", borderRadius: "9999px", fontSize: "0.73rem", fontWeight: 700,
+              cursor: "pointer",
+              border: `1px solid ${charKey === key ? ch.color : "rgba(255,255,255,0.1)"}`,
+              background: charKey === key ? ch.accentBg : "transparent",
+              color: charKey === key ? ch.color : "var(--text-sub)",
+              transition: "all 0.15s ease",
+              boxShadow: charKey === key ? `0 0 12px ${ch.color}40` : "none",
+            }}>
               {ch.emoji} {ch.name.split(" ")[0]}
             </button>
           ))}
         </div>
 
         {/* Controls */}
-        <div style={{ display: "flex", gap: "0.45rem" }}>
-          <button className="btn btn-outline" style={{ padding: "0.35rem 0.7rem", fontSize: "0.75rem" }} onClick={toggleDance}>
-            <Music2 size={13} />
-            {dancing ? "Stop" : "Dance"}
+        <div style={{ display: "flex", gap: "0.4rem" }}>
+          <button className="btn btn-outline" style={{ padding: "0.3rem 0.65rem", fontSize: "0.73rem" }} onClick={toggleDance}>
+            <Music2 size={12} /> {dancing ? "Stop" : "Dance!"}
           </button>
-          <button className="btn btn-outline" style={{ padding: "0.35rem 0.7rem", fontSize: "0.75rem" }} onClick={nextDialogue}>
-            <MessageCircle size={13} />
-            Ngobrol
+          <button className="btn btn-outline" style={{ padding: "0.3rem 0.65rem", fontSize: "0.73rem" }} onClick={nextDialogue}>
+            <MessageCircle size={12} /> Ngobrol
           </button>
-          <button className="btn btn-outline" style={{ padding: "0.35rem", borderRadius: "0.5rem" }} onClick={toggleMute}>
-            {muted ? <VolumeX size={15} /> : <Volume2 size={15} />}
+          <button className="btn btn-outline" style={{ padding: "0.3rem 0.5rem" }} onClick={toggleMute}>
+            {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
           </button>
         </div>
       </div>
 
-      {/* Hologram bottom glow */}
+      {/* Bottom glow */}
       <div style={{
-        position: "absolute", bottom: 0, left: "50%",
-        transform: "translateX(-50%)",
-        width: "70%", height: "60px",
+        position: "absolute", bottom: 48, left: "50%", transform: "translateX(-50%)",
+        width: "65%", height: "50px",
         background: `radial-gradient(ellipse, ${profile.glow} 0%, transparent 70%)`,
-        pointerEvents: "none",
-        zIndex: 1,
+        pointerEvents: "none", zIndex: 1,
       }} />
     </div>
   );

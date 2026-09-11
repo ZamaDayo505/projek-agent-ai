@@ -368,6 +368,11 @@ select.input-field option {
 .float-anim  { animation: floatY 3s ease-in-out infinite; }
 .spin-slow   { animation: spinSlow 8s linear infinite; }
 
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
 /* Shimmer loading skeleton */
 .skeleton {
   background: linear-gradient(
